@@ -8,6 +8,7 @@ import InputGroup from "react-bootstrap/InputGroup";
 import FormControl from "react-bootstrap/FormControl";
 import ListGroup from "react-bootstrap/ListGroup";
 import Form from "react-bootstrap/Form";
+import { useState } from "react";
 
 class App extends Component {
   constructor(props) {
@@ -86,7 +87,12 @@ class App extends Component {
 
   handleKeyPress = (event) => {
     if (event.key === "Enter") {
-      this.addItem();
+      this.setState({ loading: true }, () => {
+        setTimeout(() => {
+          this.addItem();
+          this.setState({ loading: false });
+        }, 1000);
+      });
     }
   };
 
@@ -130,11 +136,20 @@ class App extends Component {
               <InputGroup>
                 <Button
                   className="mt-2"
-                  onClick={() => this.addItem()}
+                  disabled={this.state.loading}
+                  onClick={() => {
+                    this.setState({ loading: true });
+                    setTimeout(() => {
+                      this.addItem();
+                      this.setState({ loading: false });
+                    }, 1000);
+                  }}
                   style={{
                     transition: "all 0.3s ease",
                     backgroundColor: "#007bff",
                     color: "#fff",
+                    opacity: this.state.loading ? 0.5 : 1,
+                    cursor: this.state.loading ? "not-allowed" : "pointer",
                   }}
                   onMouseEnter={(e) => {
                     e.target.style.transform = "scale(1.1)";
@@ -143,9 +158,10 @@ class App extends Component {
                   onMouseLeave={(e) => {
                     e.target.style.transform = "scale(1)";
                     e.target.style.backgroundColor = "purple";
+                    e.target.style.border = "none";
                   }}
                 >
-                  TAMBAH
+                  {this.state.loading ? "LOADING..." : "TAMBAH"}
                 </Button>
               </InputGroup>
             </InputGroup>
