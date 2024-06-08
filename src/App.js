@@ -7,6 +7,7 @@ import Button from "react-bootstrap/Button";
 import InputGroup from "react-bootstrap/InputGroup";
 import FormControl from "react-bootstrap/FormControl";
 import ListGroup from "react-bootstrap/ListGroup";
+import Form from "react-bootstrap/Form";
 
 class App extends Component {
   constructor(props) {
@@ -35,6 +36,7 @@ class App extends Component {
 
         // Add a user value to list
         value: this.state.userInput,
+        checked: false, // Add a new property for checkbox
       };
 
       // Update list
@@ -74,6 +76,12 @@ class App extends Component {
         list: updatedTodos,
       });
     }
+  };
+
+  handleCheckboxChange = (index) => {
+    const updatedList = [...this.state.list];
+    updatedList[index].checked = !updatedList[index].checked;
+    this.setState({ list: updatedList });
   };
 
   handleKeyPress = (event) => {
@@ -156,9 +164,17 @@ class App extends Component {
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
+                        textDecoration: item.checked ? "line-through" : "none",
                       }}
                     >
-                      {item.value}
+                      <Form.Check
+                        type="checkbox"
+                        checked={item.checked}
+                        onChange={() => this.handleCheckboxChange(index)}
+                      />
+                      <span style={{ color: item.checked ? "gray" : "black" }}>
+                        {item.value}
+                      </span>
                       <span>
                         <Button
                           style={{ marginRight: "10px" }}
