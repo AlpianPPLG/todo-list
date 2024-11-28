@@ -18,6 +18,11 @@ class App extends Component {
     this.state = {
       userInput: "",
       list: [],
+      deletedList: [],
+      filter: "",
+      deadline: "",
+      category: "",
+      confirmDelete: false,
     };
   }
 
@@ -38,16 +43,25 @@ class App extends Component {
         // Add a user value to list
         value: this.state.userInput,
         checked: false, // Add a new property for checkbox
+        deadline: this.state.deadline,
+        category: this.state.category,
       };
 
-      // Update list
+      // Get previous list
       const list = [...this.state.list];
+
+      // Add new item to list
       list.push(userInput);
+
+      // Save data to local storage
+      localStorage.setItem("todo-list", JSON.stringify(list));
 
       // reset state
       this.setState({
         list,
         userInput: "",
+        deadline: "",
+        category: "",
       });
     } else {
       alert("Kolom input tidak boleh kosong");
@@ -61,10 +75,42 @@ class App extends Component {
     // Filter values and leave value which we need to delete
     const updateList = list.filter((item) => item.id !== key);
 
+    // Save deleted list
+    this.setState({
+      deletedList: [
+        ...this.state.deletedList,
+        list.find((item) => item.id === key),
+      ],
+    });
+
     // Update list in state
     this.setState({
       list: updateList,
     });
+  }
+
+  confirmDeleteItem(key) {
+    const confirm = window.confirm(
+      "Apakah Anda yakin ingin menghapus data Todo List ini?"
+    );
+    if (confirm) {
+      this.deleteItem(key);
+      this.setState({
+        confirmDelete: false,
+      });
+    }
+  }
+
+  undoDelete() {
+    if (this.state.deletedList.length > 0) {
+      const deletedItem = this.state.deletedList.pop();
+      const list = [...this.state.list];
+      list.push(deletedItem);
+      this.setState({
+        list,
+        deletedList: this.state.deletedList,
+      });
+    }
   }
 
   editItem = (index) => {
@@ -85,15 +131,16 @@ class App extends Component {
     this.setState({ list: updatedList });
   };
 
-  handleKeyPress = (event) => {
-    if (event.key === "Enter") {
-      this.setState({ loading: true }, () => {
-        setTimeout(() => {
-          this.addItem();
-          this.setState({ loading: false });
-        }, 1000);
-      });
-    }
+  filterTodo = (event) => {
+    this.setState({
+      filter: event.target.value,
+    });
+  };
+
+  filterCategory = (event) => {
+    this.setState({
+      category: event.target.value,
+    });
   };
 
   render() {
@@ -135,8 +182,6 @@ class App extends Component {
               />
               <InputGroup>
                 <Button
-                  className="mt-2"
-                  disabled={this.state.loading}
                   onClick={() => {
                     this.setState({ loading: true });
                     setTimeout(() => {
@@ -171,46 +216,106 @@ class App extends Component {
           <Col md={{ span: 5, offset: 4 }}>
             <ListGroup>
               {/* map over and print items */}
-              {this.state.list.map((item, index) => {
-                return (
-                  <div key={index}>
-                    <ListGroup.Item
-                      variant="dark"
-                      action
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        textDecoration: item.checked ? "line-through" : "none",
-                      }}
-                    >
-                      <Form.Check
-                        type="checkbox"
-                        checked={item.checked}
-                        onChange={() => this.handleCheckboxChange(index)}
-                      />
-                      <span style={{ color: item.checked ? "gray" : "black" }}>
-                        {item.value}
-                      </span>
-                      <span>
-                        <Button
-                          style={{ marginRight: "10px" }}
-                          variant="light"
-                          onClick={() => this.deleteItem(item.id)}
+              {this.state.list
+                .filter(
+                  (item) =>
+                    item.value.toLowerCase().includes(this.state.filter) &&
+                    item.deadline.includes(this.state.deadline) &&
+                    item.category.includes(this.state.category)
+                )
+                .map((item, index) => {
+                  return (
+                    <div key={index}>
+                      <ListGroup.Item
+                        variant="dark"
+                        action
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          textDecoration: item.checked
+                            ? "line-through"
+                            : "none",
+                        }}
+                      >
+                        <Form.Check
+                          type="checkbox"
+                          checked={item.checked}
+                          onChange={() => this.handleCheckboxChange(index)}
+                        />
+                        <span
+                          style={{ color: item.checked ? "gray" : "black" }}
                         >
-                          Delete
-                        </Button>
-                        <Button
-                          variant="light"
-                          onClick={() => this.editItem(index)}
-                        >
-                          Edit
-                        </Button>
-                      </span>
-                    </ListGroup.Item>
-                  </div>
-                );
-              })}
+                          {item.value}
+                        </span>
+                        <span>
+                          <Button
+                            style={{ marginRight: "10px" }}
+                            variant="light"
+                            onClick={() =>
+                              this.setState({ confirmDelete: true })
+                            }
+                          >
+                            Delete
+                          </Button>
+                          {this.state.confirmDelete && (
+                            <Button
+                              variant="light"
+                              onClick={() => this.confirmDeleteItem(item.id)}
+                            >
+                              Confirm
+                            </Button>
+                          )}
+                          <Button
+                            variant="light"
+                            onClick={() => this.editItem(index)}
+                          >
+                            Edit
+                          </Button>
+                        </span>
+                      </ListGroup.Item>
+                    </div>
+                  );
+                })}
             </ListGroup>
+          </Col>
+        </Row>
+        <Row>
+          <Col md={{ span: 5, offset: 4 }}>
+            <Form>
+              <Form.Group controlId="formBasicEmail">
+                <Form.Label>Filter</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={this.state.filter}
+                  onChange={this.filterTodo}
+                  placeholder="Filter by name"
+                />
+              </Form.Group>
+
+              <Form.Group controlId="formBasicPassword">
+                <Form.Label>Deadline</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={this.state.deadline}
+                  onChange={(event) =>
+                    this.setState({ deadline: event.target.value })
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group controlId="formBasicPassword">
+                <Form.Label>Category</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={this.state.category}
+                  onChange={this.filterCategory}
+                  placeholder="Filter by category"
+                />
+              </Form.Group>
+              <Button variant="light" onClick={() => this.undoDelete()}>
+                Undo Delete
+              </Button>
+            </Form>
           </Col>
         </Row>
       </Container>
