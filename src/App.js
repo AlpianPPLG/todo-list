@@ -8,13 +8,12 @@ import InputGroup from "react-bootstrap/InputGroup";
 import FormControl from "react-bootstrap/FormControl";
 import ListGroup from "react-bootstrap/ListGroup";
 import Form from "react-bootstrap/Form";
-import { useState } from "react";
+import Badge from "react-bootstrap/Badge";
 
 class App extends Component {
   constructor(props) {
     super(props);
 
-    // Setting up state
     this.state = {
       userInput: "",
       list: [],
@@ -22,60 +21,58 @@ class App extends Component {
       filter: "",
       deadline: "",
       category: "",
+      tags: "",
       confirmDelete: false,
+      sort: "asc",
+      darkMode: false,
     };
+
+    if (localStorage.getItem("todo-list")) {
+      const list = JSON.parse(localStorage.getItem("todo-list"));
+      this.setState({
+        list,
+      });
+    }
   }
 
-  // Set a user input value
   updateInput(value) {
     this.setState({
       userInput: value,
     });
   }
 
-  // Add item if user input in not empty
   addItem() {
     if (this.state.userInput !== "") {
       const userInput = {
-        // Add a random id which is used to delete
         id: Math.random(),
-
-        // Add a user value to list
         value: this.state.userInput,
-        checked: false, // Add a new property for checkbox
+        checked: false,
         deadline: this.state.deadline,
         category: this.state.category,
+        tags: this.state.tags.split(",").map((tag) => tag.trim()),
       };
 
-      // Get previous list
       const list = [...this.state.list];
-
-      // Add new item to list
       list.push(userInput);
 
-      // Save data to local storage
       localStorage.setItem("todo-list", JSON.stringify(list));
 
-      // reset state
       this.setState({
         list,
         userInput: "",
         deadline: "",
         category: "",
+        tags: "",
       });
     } else {
       alert("Kolom input tidak boleh kosong");
     }
   }
 
-  // Function to delete item from list use id to delete
   deleteItem(key) {
     const list = [...this.state.list];
-
-    // Filter values and leave value which we need to delete
     const updateList = list.filter((item) => item.id !== key);
 
-    // Save deleted list
     this.setState({
       deletedList: [
         ...this.state.deletedList,
@@ -83,7 +80,6 @@ class App extends Component {
       ],
     });
 
-    // Update list in state
     this.setState({
       list: updateList,
     });
@@ -143,9 +139,46 @@ class App extends Component {
     });
   };
 
+  filterTags = (event) => {
+    this.setState({
+      tags: event.target.value,
+    });
+  };
+
+  sortTodo = (event) => {
+    this.setState({
+      sort: event.target.value,
+    });
+  };
+
+  toggleDarkMode = () => {
+    this.setState((prevState) => ({
+      darkMode: !prevState.darkMode,
+    }));
+  };
+
   render() {
+    const { darkMode } = this.state;
+    const appStyle = {
+      backgroundColor: darkMode ? "#333" : "#fff",
+      color: darkMode ? "#fff" : "#000",
+      minHeight: "100vh",
+      transition: "all 0.3s ease",
+    };
+
+    const totalTasks = this.state.list.length;
+    const incompleteTasks = this.state.list.filter(
+      (item) => !item.checked
+    ).length;
+
     return (
-      <Container>
+      <Container style={appStyle}>
+        <Row>
+          <Col>
+            <h2>Total Tasks: {totalTasks}</h2>
+            <h3>Incomplete Tasks: {incompleteTasks}</h3>
+          </Col>
+        </Row>
         <Row
           style={{
             display: "flex",
@@ -172,12 +205,22 @@ class App extends Component {
           <Col md={{ span: 5, offset: 4 }}>
             <InputGroup className="mb-3">
               <FormControl
-                placeholder="add item . . . "
+                placeholder="Tambahkan tugas baru..."
                 size="lg"
                 value={this.state.userInput}
                 onChange={(item) => this.updateInput(item.target.value)}
                 onKeyPress={this.handleKeyPress}
                 aria-label="add something"
+                aria-describedby="basic-addon2"
+              />
+              <FormControl
+                placeholder="Tambahkan tag..."
+                size="lg"
+                value={this.state.tags}
+                onChange={(event) =>
+                  this.setState({ tags: event.target.value })
+                }
+                aria-label="add tags"
                 aria-describedby="basic-addon2"
               />
               <InputGroup>
@@ -208,6 +251,28 @@ class App extends Component {
                 >
                   {this.state.loading ? "LOADING..." : "TAMBAH"}
                 </Button>
+                <Button
+                  onClick={this.toggleDarkMode}
+                  style={{
+                    transition: "all 0.3s ease",
+                    backgroundColor: "#007bff",
+                    color: "#fff",
+                    opacity: this.state.loading ? 0.5 : 1,
+                    cursor: this.state.loading ? "not-allowed" : "pointer",
+                    margin: "3px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = "scale(1.1)";
+                    e.target.style.backgroundColor = "#0056b3";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = "scale(1)";
+                    e.target.style.backgroundColor = "purple";
+                    e.target.style.border = "none";
+                  }}
+                >
+                  {this.state.darkMode ? "LIGHT MODE" : "DARK MODE"}
+                </Button>
               </InputGroup>
             </InputGroup>
           </Col>
@@ -215,19 +280,26 @@ class App extends Component {
         <Row>
           <Col md={{ span: 5, offset: 4 }}>
             <ListGroup>
-              {/* map over and print items */}
               {this.state.list
                 .filter(
                   (item) =>
                     item.value.toLowerCase().includes(this.state.filter) &&
                     item.deadline.includes(this.state.deadline) &&
-                    item.category.includes(this.state.category)
+                    item.category.includes(this.state.category) &&
+                    item.tags.some((tag) => tag.includes(this.state.tags))
                 )
+                .sort((a, b) => {
+                  if (this.state.sort === "asc") {
+                    return a.deadline.localeCompare(b.deadline);
+                  } else {
+                    return b.deadline.localeCompare(a.deadline);
+                  }
+                })
                 .map((item, index) => {
                   return (
                     <div key={index}>
                       <ListGroup.Item
-                        variant="dark"
+                        variant={darkMode ? "secondary" : "dark"}
                         action
                         style={{
                           display: "flex",
@@ -235,6 +307,8 @@ class App extends Component {
                           textDecoration: item.checked
                             ? "line-through"
                             : "none",
+                          backgroundColor: darkMode ? "#444" : "#fff",
+                          color: darkMode ? "#fff" : "#000",
                         }}
                       >
                         <Form.Check
@@ -243,9 +317,26 @@ class App extends Component {
                           onChange={() => this.handleCheckboxChange(index)}
                         />
                         <span
-                          style={{ color: item.checked ? "gray" : "black" }}
+                          style={{
+                            color: item.checked
+                              ? "gray"
+                              : darkMode
+                              ? "#fff"
+                              : "#000",
+                          }}
                         >
                           {item.value}
+                        </span>
+                        <span>
+                          {item.tags.map((tag, idx) => (
+                            <Badge
+                              key={idx}
+                              bg="info"
+                              style={{ margin: "0 4px" }}
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
                         </span>
                         <span>
                           <Button
@@ -261,6 +352,7 @@ class App extends Component {
                             <Button
                               variant="light"
                               onClick={() => this.confirmDeleteItem(item.id)}
+                              style={{ margin: "3px" }}
                             >
                               Confirm
                             </Button>
@@ -302,7 +394,6 @@ class App extends Component {
                   }
                 />
               </Form.Group>
-
               <Form.Group controlId="formBasicPassword">
                 <Form.Label>Category</Form.Label>
                 <Form.Control
@@ -311,6 +402,26 @@ class App extends Component {
                   onChange={this.filterCategory}
                   placeholder="Filter by category"
                 />
+              </Form.Group>
+              <Form.Group controlId="formBasicPassword">
+                <Form.Label>Tags</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={this.state.tags}
+                  onChange={this.filterTags}
+                  placeholder="Filter by tags"
+                />
+              </Form.Group>
+              <Form.Group controlId="formBasicPassword">
+                <Form.Label>Sortir</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={this.state.sort}
+                  onChange={this.sortTodo}
+                >
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </Form.Control>
               </Form.Group>
               <Button variant="light" onClick={() => this.undoDelete()}>
                 Undo Delete
